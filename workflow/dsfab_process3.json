@@ -1,0 +1,458 @@
+{
+  "name": "DSFAB Process 3 — delta-neutral radar",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "16e1da84-6321-4d5b-aabb-07c5349e8aea",
+      "name": "Cron (every 15m)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -2000,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "/* Scenario Configs — edit values here; logic lives in the other nodes.\n * Fees are PER LEG, as fractions of notional (0.006 = 0.60%). Set them to your own fee tier. */\nconst config = {\n  \"capitalUSD\": 500,\n  \"perpMarginFraction\": 0.5,\n  \"holdDays\": 30,\n  \"scenarios\": [\n    {\n      \"name\": \"Maker\",\n      \"spotFee\": 0.004,\n      \"spotSlippage\": 0.0002,\n      \"perpFee\": 0.0002,\n      \"perpSlippage\": 0.0002,\n      \"perp2Fee\": 0.00015,\n      \"perp2Slippage\": 0.0002\n    },\n    {\n      \"name\": \"Base\",\n      \"spotFee\": 0.006,\n      \"spotSlippage\": 0.0005,\n      \"perpFee\": 0.0005,\n      \"perpSlippage\": 0.0005,\n      \"perp2Fee\": 0.00045,\n      \"perp2Slippage\": 0.0005\n    },\n    {\n      \"name\": \"Stress\",\n      \"spotFee\": 0.006,\n      \"spotSlippage\": 0.0015,\n      \"perpFee\": 0.0005,\n      \"perpSlippage\": 0.0015,\n      \"perp2Fee\": 0.00045,\n      \"perp2Slippage\": 0.0015\n    }\n  ],\n  \"alertScenario\": \"Base\",\n  \"alertOnExperimental\": false,\n  \"strategies\": {\n    \"fundingCarry\": true,\n    \"perpPerpSpread\": true,\n    \"datedBasis\": true\n  },\n  \"allowSpotShort\": false,\n  \"spotBorrowDaily\": 0.0003,\n  \"futuresSettleFee\": 0,\n  \"freshness\": {\n    \"maxFundingAgeMin\": 130,\n    \"minPriceUSD\": 0.2\n  },\n  \"policy\": {\n    \"minHistoryPoints\": 120,\n    \"minSameSignFrac\": 0.7,\n    \"maxBreakevenDays\": 20,\n    \"minNetOverHold\": 0.002,\n    \"minBasisDays\": 3,\n    \"minBasisAnnualized\": 0.03,\n    \"maxVenuePriceGap\": 0.03\n  },\n  \"sanity\": {\n    \"maxAbsHourlyRate\": 0.01,\n    \"maxAbsBasis\": 0.2\n  }\n};\nreturn [{ json: config }];"
+      },
+      "id": "d15cf73d-3171-42d4-ab50-aed168d585ef",
+      "name": "Scenario Configs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1820,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "/* Asset universe. Set enabled:false to exclude an asset. */\nconst assets = [\n  {\n    \"asset\": \"BTC\",\n    \"cb\": \"BTC-USD\",\n    \"kr\": \"PF_XBTUSD\",\n    \"hl\": \"BTC\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"ETH\",\n    \"cb\": \"ETH-USD\",\n    \"kr\": \"PF_ETHUSD\",\n    \"hl\": \"ETH\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"SOL\",\n    \"cb\": \"SOL-USD\",\n    \"kr\": \"PF_SOLUSD\",\n    \"hl\": \"SOL\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"XRP\",\n    \"cb\": \"XRP-USD\",\n    \"kr\": \"PF_XRPUSD\",\n    \"hl\": \"XRP\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"ADA\",\n    \"cb\": \"ADA-USD\",\n    \"kr\": \"PF_ADAUSD\",\n    \"hl\": \"ADA\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"DOGE\",\n    \"cb\": \"DOGE-USD\",\n    \"kr\": \"PF_DOGEUSD\",\n    \"hl\": \"DOGE\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"DOT\",\n    \"cb\": \"DOT-USD\",\n    \"kr\": \"PF_DOTUSD\",\n    \"hl\": \"DOT\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"LINK\",\n    \"cb\": \"LINK-USD\",\n    \"kr\": \"PF_LINKUSD\",\n    \"hl\": \"LINK\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"LTC\",\n    \"cb\": \"LTC-USD\",\n    \"kr\": \"PF_LTCUSD\",\n    \"hl\": \"LTC\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"BCH\",\n    \"cb\": \"BCH-USD\",\n    \"kr\": \"PF_BCHUSD\",\n    \"hl\": \"BCH\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"AVAX\",\n    \"cb\": \"AVAX-USD\",\n    \"kr\": \"PF_AVAXUSD\",\n    \"hl\": \"AVAX\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"MATIC\",\n    \"cb\": \"MATIC-USD\",\n    \"kr\": \"PF_MATICUSD\",\n    \"hl\": \"POL\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"ATOM\",\n    \"cb\": \"ATOM-USD\",\n    \"kr\": \"PF_ATOMUSD\",\n    \"hl\": \"ATOM\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"XLM\",\n    \"cb\": \"XLM-USD\",\n    \"kr\": \"PF_XLMUSD\",\n    \"hl\": \"XLM\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"UNI\",\n    \"cb\": \"UNI-USD\",\n    \"kr\": \"PF_UNIUSD\",\n    \"hl\": \"UNI\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"ETC\",\n    \"cb\": \"ETC-USD\",\n    \"kr\": \"PF_ETCUSD\",\n    \"hl\": \"ETC\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"FIL\",\n    \"cb\": \"FIL-USD\",\n    \"kr\": \"PF_FILUSD\",\n    \"hl\": \"FIL\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"ALGO\",\n    \"cb\": \"ALGO-USD\",\n    \"kr\": \"PF_ALGOUSD\",\n    \"hl\": \"ALGO\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"AAVE\",\n    \"cb\": \"AAVE-USD\",\n    \"kr\": \"PF_AAVEUSD\",\n    \"hl\": \"AAVE\",\n    \"enabled\": true\n  },\n  {\n    \"asset\": \"NEAR\",\n    \"cb\": \"NEAR-USD\",\n    \"kr\": \"PF_NEARUSD\",\n    \"hl\": \"NEAR\",\n    \"enabled\": true\n  }\n];\nreturn assets.filter((a) => a.enabled).map((a) => ({ json: a }));"
+      },
+      "id": "00bb72e1-5609-45f4-aec1-6d364d9c0ff3",
+      "name": "Assets Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1640,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 15000
+        },
+        "url": "={{ 'https://api.exchange.coinbase.com/products/' + $json.cb + '/ticker' }}"
+      },
+      "id": "d7782fc7-a306-478f-acc4-6eba695d68eb",
+      "name": "CB — Spot Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1460,
+        496
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 15000
+        },
+        "url": "={{ 'https://futures.kraken.com/derivatives/api/v3/historical-funding-rates?symbol=' + $('Assets Config').all()[$itemIndex].json.kr }}"
+      },
+      "id": "cc0dea42-e2d1-48dd-a251-1bd50aee1a66",
+      "name": "KR — Funding History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1280,
+        496
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 15000
+        },
+        "url": "https://futures.kraken.com/derivatives/api/v3/tickers"
+      },
+      "id": "dbd9ef65-2b72-48ac-afea-71d2f1e6cbe2",
+      "name": "KR — Tickers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1100,
+        496
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 15000
+        },
+        "method": "POST",
+        "url": "https://api.hyperliquid.xyz/info",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"type\":\"metaAndAssetCtxs\"}"
+      },
+      "id": "6d2279e9-5c65-4117-ad25-63dd002dbdd7",
+      "name": "HL — Funding Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -920,
+        496
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "/* Assemble one snapshot from all fetch nodes. Responses are matched to assets by index. */\n/* DSFAB core — pure analysis logic (no network, no n8n globals).\n * This file is the single source of truth. scripts/build-workflow.js inlines it\n * into the n8n Code nodes, and the tests / backtest import it directly.\n *\n * Units used everywhere below:\n *   rate  = fraction of notional (0.0001 = 0.01%)\n *   *Daily = fraction of notional per day\n */\n\n// ---------- small helpers ----------\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  const n = +v;\n  return Number.isFinite(n) ? n : null;\n}\nfunction toMs(t) {\n  if (t === null || t === undefined || t === '') return null;\n  const n = +t;\n  if (Number.isFinite(n)) return n < 1e12 ? n * 1000 : n;\n  const d = Date.parse(t);\n  return Number.isFinite(d) ? d : null;\n}\nfunction mean(a) {\n  return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;\n}\nfunction median(a) {\n  if (!a.length) return null;\n  const s = a.slice().sort((x, y) => x - y);\n  const m = Math.floor(s.length / 2);\n  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;\n}\nfunction sign(x) {\n  return x > 0 ? 1 : x < 0 ? -1 : 0;\n}\nfunction escHtml(s) {\n  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\n\n// ---------- configuration ----------\nfunction defaultConfig() {\n  return {\n    capitalUSD: 500,\n    // Fraction of the perp notional kept as margin on the futures venue.\n    // 0.5 = 2x on the perp leg. The rest of the capital buys the spot leg.\n    perpMarginFraction: 0.5,\n    holdDays: 30, // planning horizon used for \"net over hold\"\n    // Cost scenarios. Fees are PER LEG, as a fraction of notional.\n    // These are examples only: set them to YOUR fee tier on each venue.\n    scenarios: [\n      { name: 'Maker', spotFee: 0.004, spotSlippage: 0.0002, perpFee: 0.0002, perpSlippage: 0.0002, perp2Fee: 0.00015, perp2Slippage: 0.0002 },\n      { name: 'Base', spotFee: 0.006, spotSlippage: 0.0005, perpFee: 0.0005, perpSlippage: 0.0005, perp2Fee: 0.00045, perp2Slippage: 0.0005 },\n      { name: 'Stress', spotFee: 0.006, spotSlippage: 0.0015, perpFee: 0.0005, perpSlippage: 0.0015, perp2Fee: 0.00045, perp2Slippage: 0.0015 }\n    ],\n    alertScenario: 'Base', // alerts are judged under this scenario, never the cheapest one\n    alertOnExperimental: false,\n    strategies: { fundingCarry: true, perpPerpSpread: true, datedBasis: true },\n    // Spot shorting (needed when funding is negative) is not available on\n    // Coinbase spot. Leave false unless you have a margin venue for the spot leg.\n    allowSpotShort: false,\n    spotBorrowDaily: 0.0003, // only used when allowSpotShort is true\n    futuresSettleFee: 0, // fee charged at expiry settlement of a dated future\n    freshness: { maxFundingAgeMin: 130, minPriceUSD: 0.2 },\n    policy: {\n      minHistoryPoints: 120, // at least ~5 days of hourly prints before trusting an asset\n      minSameSignFrac: 0.7, // share of the last 7d prints that agree with the 7d mean sign\n      maxBreakevenDays: 20,\n      minNetOverHold: 0.002, // net return on notional over holdDays, after round-trip cost\n      minBasisDays: 3,\n      minBasisAnnualized: 0.03,\n      maxVenuePriceGap: 0.03 // drop cross-venue signals if prices disagree by more than this\n    },\n    sanity: { maxAbsHourlyRate: 0.01, maxAbsBasis: 0.2 }\n  };\n}\nfunction mergeConfig(user) {\n  const d = defaultConfig();\n  if (!user || typeof user !== 'object') return d;\n  const out = Object.assign({}, d, user);\n  for (const k of ['strategies', 'freshness', 'policy', 'sanity']) {\n    out[k] = Object.assign({}, d[k], user[k] || {});\n  }\n  if (!Array.isArray(out.scenarios) || !out.scenarios.length) out.scenarios = d.scenarios;\n  return out;\n}\n\n// ---------- Kraken Futures funding history ----------\n// GET /derivatives/api/v3/historical-funding-rates?symbol=PF_XBTUSD\n// -> { result, serverTime, rates: [{ timestamp, fundingRate, relativeFundingRate }] }\n// `fundingRate` is ABSOLUTE (quote currency per contract); only `relativeFundingRate`\n// is a fraction of notional, and it is per funding period (hourly on Kraken).\nfunction parseKrakenFunding(body, sanity) {\n  const maxAbs = (sanity && sanity.maxAbsHourlyRate) || 0.01;\n  const arr = body && Array.isArray(body.rates) ? body.rates : null;\n  if (!arr) return { ok: false, reason: 'kr_no_rates', series: [], cadenceMin: 60 };\n  const series = [];\n  let dropped = 0;\n  for (const r of arr) {\n    const t = toMs(r && r.timestamp);\n    const rel = num(r && r.relativeFundingRate);\n    if (t === null || rel === null) { dropped++; continue; }\n    if (Math.abs(rel) > maxAbs) { dropped++; continue; }\n    series.push({ t, rel });\n  }\n  if (!series.length) return { ok: false, reason: 'kr_no_relative_rate', series: [], cadenceMin: 60 };\n  series.sort((a, b) => a.t - b.t);\n  const tail = series.slice(-49);\n  const diffs = [];\n  for (let i = 1; i < tail.length; i++) diffs.push((tail[i].t - tail[i - 1].t) / 60000);\n  const med = median(diffs);\n  const cadenceMin = med && med > 0 ? Math.round(med) : 60;\n  return { ok: true, reason: null, series, cadenceMin, dropped };\n}\n\nfunction windowStats(series, fromMs) {\n  const w = [];\n  for (let i = series.length - 1; i >= 0 && series[i].t > fromMs; i--) w.push(series[i].rel);\n  return { n: w.length, mean: mean(w), values: w };\n}\n\nfunction fundingStats(series, cadenceMin, nowMs) {\n  if (!series.length) return null;\n  const perDay = 1440 / cadenceMin;\n  const last = series[series.length - 1];\n  const H = 3600000;\n  const w24 = windowStats(series, last.t - 24 * H);\n  const w7 = windowStats(series, last.t - 168 * H);\n  const w30 = windowStats(series, last.t - 720 * H);\n  const s7 = sign(w7.mean || 0);\n  const agree = w7.values.filter((x) => sign(x) === s7 && s7 !== 0).length;\n  const sameSignFrac7d = w7.n ? agree / w7.n : 0;\n  const daily24 = w24.mean === null ? null : w24.mean * perDay;\n  const daily7d = w7.mean === null ? null : w7.mean * perDay;\n  const daily30d = w30.mean === null ? null : w30.mean * perDay;\n  // Conservative expectation: the weaker of the 24h and 7d means, and zero if they disagree in sign.\n  let expectedDaily = 0;\n  if (daily24 !== null && daily7d !== null && sign(daily24) === sign(daily7d) && sign(daily7d) !== 0) {\n    expectedDaily = sign(daily7d) * Math.min(Math.abs(daily24), Math.abs(daily7d));\n  }\n  const ageMin = Math.max(0, (nowMs - last.t) / 60000);\n  return {\n    cadenceMin, perDay,\n    lastRel: last.rel, lastTs: last.t, ageMin,\n    dailyNow: last.rel * perDay,\n    daily24, daily7d, daily30d,\n    n7d: w7.n, sameSignFrac7d, expectedDaily,\n    validUntilMs: last.t + cadenceMin * 60000,\n    remainMin: Math.max(0, cadenceMin - ageMin)\n  };\n}\n\n// ---------- cost model ----------\n// A delta-neutral position has FOUR fills: open + close on each of two legs.\n// Costs are one-off; funding accrues over time. They must never be netted per day.\nfunction costModel(sc) {\n  const spotLeg = sc.spotFee + sc.spotSlippage;\n  const perpLeg = sc.perpFee + sc.perpSlippage;\n  const perp2Leg = (sc.perp2Fee === undefined ? sc.perpFee : sc.perp2Fee) + (sc.perp2Slippage === undefined ? sc.perpSlippage : sc.perp2Slippage);\n  return {\n    spotLeg, perpLeg, perp2Leg,\n    carryRoundTrip: 2 * spotLeg + 2 * perpLeg,\n    perpPerpRoundTrip: 2 * perpLeg + 2 * perp2Leg,\n    // buy spot, sell future, (future settles at expiry), sell spot\n    basisRoundTrip: 2 * spotLeg + perpLeg\n  };\n}\n// Capital split. Spot + perp: the spot leg is fully funded and the perp leg needs margin m.\n// Perp + perp: both legs need margin m on their own venue.\nfunction sizing(cfg, twoPerps) {\n  const m = cfg.perpMarginFraction;\n  const notional = twoPerps ? cfg.capitalUSD / (2 * m) : cfg.capitalUSD / (1 + m);\n  // Rough distance to margin exhaustion on a perp leg (ignores maintenance margin).\n  return { notional, perpMarginUSD: notional * m, liqBufferPct: m };\n}\nfunction evaluate(dailyNet, cost, cfg, twoPerps) {\n  const H = cfg.holdDays;\n  const breakevenDays = dailyNet > 0 ? cost / dailyNet : Infinity;\n  const netOverHold = dailyNet * H - cost;\n  const sz = sizing(cfg, twoPerps);\n  const netUsd = netOverHold * sz.notional;\n  const annualOnCapital = (netUsd / cfg.capitalUSD) * (365 / H);\n  return { breakevenDays, netOverHold, netUsd, annualOnCapital, notional: sz.notional };\n}\n\n// ---------- strategy 1: funding carry (spot vs perp) ----------\nfunction analyzeCarry(asset, price, st, sc, cfg, fresh) {\n  const cost = costModel(sc).carryRoundTrip;\n  const e = st.expectedDaily;\n  const dir = e > 0 ? 'SHORT_PERP_LONG_SPOT' : e < 0 ? 'LONG_PERP_SHORT_SPOT' : 'NONE';\n  const needsSpotShort = dir === 'LONG_PERP_SHORT_SPOT';\n  const executable = dir === 'SHORT_PERP_LONG_SPOT' || (needsSpotShort && cfg.allowSpotShort);\n  const dailyNet = Math.abs(e) - (needsSpotShort ? cfg.spotBorrowDaily : 0);\n  const ev = evaluate(dailyNet, cost, cfg);\n  const p = cfg.policy;\n  const reasons = [];\n  if (!fresh) reasons.push('stale');\n  if (dir === 'NONE') reasons.push('24h/7d sign disagree');\n  if (!executable && dir !== 'NONE') reasons.push('needs spot short');\n  if (st.n7d < p.minHistoryPoints) reasons.push('short history');\n  if (st.sameSignFrac7d < p.minSameSignFrac) reasons.push('unstable sign');\n  if (!(ev.breakevenDays <= p.maxBreakevenDays)) reasons.push('breakeven too long');\n  if (ev.netOverHold < p.minNetOverHold) reasons.push('net too small');\n  return Object.assign({\n    strategy: 'fundingCarry', scenario: sc.name, asset, spotPrice: price,\n    direction: dir, executable, expectedDaily: e, dailyNow: st.dailyNow,\n    daily24: st.daily24, daily7d: st.daily7d, daily30d: st.daily30d,\n    sameSignFrac7d: st.sameSignFrac7d, roundTripCost: cost,\n    ageMin: st.ageMin, fresh, validUntilMs: st.validUntilMs, remainMin: st.remainMin,\n    pass: reasons.length === 0, reasons\n  }, ev);\n}\n\n// ---------- strategy 2: perp-perp funding spread (Kraken vs Hyperliquid) ----------\n// Needs no spot leg, so it also works when funding is negative.\n// Hyperliquid funding is hourly. EXPERIMENTAL: only a snapshot of the second venue is used.\nfunction parseHyperliquid(body, sanity) {\n  const maxAbs = (sanity && sanity.maxAbsHourlyRate) || 0.01;\n  const out = {};\n  if (!Array.isArray(body) || body.length < 2) return out;\n  const uni = body[0] && Array.isArray(body[0].universe) ? body[0].universe : [];\n  const ctx = Array.isArray(body[1]) ? body[1] : [];\n  for (let i = 0; i < uni.length && i < ctx.length; i++) {\n    const name = uni[i] && uni[i].name;\n    const f = num(ctx[i] && ctx[i].funding);\n    const px = num(ctx[i] && (ctx[i].markPx !== undefined ? ctx[i].markPx : ctx[i].oraclePx));\n    if (!name || f === null || px === null || Math.abs(f) > maxAbs) continue;\n    out[String(name).toUpperCase()] = { hourly: f, price: px };\n  }\n  return out;\n}\nfunction analyzePerpPerp(asset, price, st, hl, sc, cfg, fresh) {\n  const cost = costModel(sc).perpPerpRoundTrip;\n  const krHourly = (st.daily24 === null ? st.dailyNow : st.daily24) / 24;\n  const spreadDaily = (krHourly - hl.hourly) * 24;\n  const dir = spreadDaily > 0 ? 'SHORT_KRAKEN_LONG_HL' : spreadDaily < 0 ? 'LONG_KRAKEN_SHORT_HL' : 'NONE';\n  const ev = evaluate(Math.abs(spreadDaily), cost, cfg, true);\n  const p = cfg.policy;\n  const gap = price > 0 ? Math.abs(hl.price / price - 1) : Infinity;\n  const reasons = [];\n  if (!fresh) reasons.push('stale');\n  if (dir === 'NONE') reasons.push('no spread');\n  if (gap > p.maxVenuePriceGap) reasons.push('venue price gap');\n  if (!(ev.breakevenDays <= p.maxBreakevenDays)) reasons.push('breakeven too long');\n  if (ev.netOverHold < p.minNetOverHold) reasons.push('net too small');\n  return Object.assign({\n    strategy: 'perpPerpSpread', experimental: true, scenario: sc.name, asset, spotPrice: price,\n    direction: dir, executable: true, expectedDaily: spreadDaily,\n    krDaily: krHourly * 24, hlDaily: hl.hourly * 24, venuePriceGap: gap, roundTripCost: cost,\n    ageMin: st.ageMin, fresh, validUntilMs: st.validUntilMs, remainMin: st.remainMin,\n    pass: reasons.length === 0, reasons\n  }, ev);\n}\n\n// ---------- strategy 3: dated-futures basis (cash and carry) ----------\n// Long spot + short a fixed-maturity future. The return is locked at entry\n// (basis converges at expiry), so it does not depend on future funding prints.\n// EXPERIMENTAL: reads Kraken /tickers; symbols like FF_XBTUSD_YYMMDD / FI_XBTUSD_YYMMDD.\nfunction parseKrakenDated(body) {\n  const arr = body && Array.isArray(body.tickers) ? body.tickers : [];\n  const out = [];\n  for (const t of arr) {\n    const m = /^(FF|FI)_([A-Z]+)USD_(\\d{2})(\\d{2})(\\d{2})$/.exec(String((t && t.symbol) || '').toUpperCase());\n    if (!m) continue;\n    const price = num(t.bid) || num(t.markPrice) || num(t.last);\n    if (!price) continue;\n    const expiryMs = Date.UTC(2000 + +m[3], +m[4] - 1, +m[5], 12, 0, 0);\n    out.push({\n      symbol: m[0], asset: m[2] === 'XBT' ? 'BTC' : m[2], inverse: m[1] === 'FI',\n      price, indexPrice: num(t.indexPrice), expiryMs\n    });\n  }\n  return out;\n}\nfunction analyzeBasis(c, spot, sc, cfg, nowMs) {\n  const S = spot > 0 ? spot : c.indexPrice;\n  const cost = costModel(sc).basisRoundTrip + (cfg.futuresSettleFee || 0);\n  const days = (c.expiryMs - nowMs) / 86400000;\n  const basis = S > 0 ? c.price / S - 1 : NaN;\n  const net = basis - cost;\n  const sz = sizing(cfg);\n  const netUsd = net * sz.notional;\n  const annualOnCapital = days > 0 ? (netUsd / cfg.capitalUSD) * (365 / days) : NaN;\n  const p = cfg.policy;\n  const reasons = [];\n  if (!Number.isFinite(basis)) reasons.push('no spot price');\n  if (Math.abs(basis) > cfg.sanity.maxAbsBasis) reasons.push('basis out of range');\n  if (c.inverse) reasons.push('inverse contract');\n  if (!(days >= p.minBasisDays)) reasons.push('too close to expiry');\n  if (!(basis > 0)) reasons.push('needs spot short');\n  if (!(annualOnCapital >= p.minBasisAnnualized)) reasons.push('yield too small');\n  return {\n    strategy: 'datedBasis', experimental: true, scenario: sc.name, asset: c.asset, symbol: c.symbol,\n    spotPrice: S, futurePrice: c.price, direction: 'LONG_SPOT_SHORT_FUTURE', executable: basis > 0,\n    basis, daysToExpiry: days, roundTripCost: cost, netOverHold: net, netUsd, annualOnCapital,\n    notional: sz.notional, breakevenDays: null, expectedDaily: days > 0 ? basis / days : 0,\n    pass: reasons.length === 0, reasons\n  };\n}\n\n// ---------- snapshot -> full analysis ----------\n// snapshot = { timestamp, assets:[{asset, price, kr:{ok,reason,series,cadenceMin}, errors:[]}],\n//              hl:{ASSET:{hourly,price}}, dated:[...] }\nfunction analyzeSnapshot(snapshot, userCfg, nowMs) {\n  const cfg = mergeConfig(userCfg);\n  const results = [];\n  const health = [];\n  for (const a of snapshot.assets) {\n    const st = a.kr && a.kr.ok ? fundingStats(a.kr.series, a.kr.cadenceMin, nowMs) : null;\n    const priceOk = Number.isFinite(a.price) && a.price >= cfg.freshness.minPriceUSD;\n    const window = st ? Math.max(cfg.freshness.maxFundingAgeMin, Math.round(st.cadenceMin * 1.5)) : cfg.freshness.maxFundingAgeMin;\n    const fresh = !!st && priceOk && st.ageMin <= window;\n    health.push({ asset: a.asset, price: a.price, st, fresh, errors: a.errors || [] });\n    if (!st || !priceOk) continue;\n    for (const sc of cfg.scenarios) {\n      if (cfg.strategies.fundingCarry) results.push(analyzeCarry(a.asset, a.price, st, sc, cfg, fresh));\n      const hl = snapshot.hl && snapshot.hl[a.asset];\n      if (cfg.strategies.perpPerpSpread && hl) results.push(analyzePerpPerp(a.asset, a.price, st, hl, sc, cfg, fresh));\n    }\n  }\n  if (cfg.strategies.datedBasis && Array.isArray(snapshot.dated)) {\n    const px = {};\n    for (const a of snapshot.assets) px[a.asset] = a.price;\n    for (const c of snapshot.dated) for (const sc of cfg.scenarios) results.push(analyzeBasis(c, px[c.asset], sc, cfg, nowMs));\n  }\n  return { cfg, results, health };\n}\n\n// ---------- reporting ----------\nconst pct = (v, d) => (Number.isFinite(v) ? (v * 100).toFixed(d === undefined ? 3 : d) + '%' : 'n/a');\nconst days = (v) => (Number.isFinite(v) ? v.toFixed(1) + 'd' : '∞');\nconst DIR_TEXT = {\n  SHORT_PERP_LONG_SPOT: 'Short perp (KR) + Long spot (CB)',\n  LONG_PERP_SHORT_SPOT: 'Long perp (KR) + Short spot',\n  SHORT_KRAKEN_LONG_HL: 'Short perp (KR) + Long perp (HL)',\n  LONG_KRAKEN_SHORT_HL: 'Long perp (KR) + Short perp (HL)',\n  LONG_SPOT_SHORT_FUTURE: 'Long spot (CB) + Short dated future (KR)',\n  NONE: 'No trade'\n};\nfunction fmtRemain(min) {\n  const m = Math.max(0, Math.floor(min || 0));\n  const h = Math.floor(m / 60);\n  return (h > 0 ? h + 'h ' : '') + (m % 60) + 'm';\n}\nfunction truncateHtml(msg, limit) {\n  const max = limit || 3900;\n  if (msg.length <= max) return msg;\n  const lines = msg.split('\\n');\n  const out = [];\n  let len = 0;\n  for (const l of lines) {\n    if (len + l.length + 1 > max - 40) break;\n    out.push(l);\n    len += l.length + 1;\n  }\n  let res = out.join('\\n');\n  const opens = (res.match(/<pre>/g) || []).length;\n  const closes = (res.match(/<\\/pre>/g) || []).length;\n  if (opens > closes) res += '</pre>';\n  return res + '\\n… (truncated)';\n}\nfunction lineFor(r) {\n  if (r.strategy === 'datedBasis') {\n    return `• <b>${escHtml(r.symbol)}</b> | basis ${pct(r.basis, 2)} | ${r.daysToExpiry.toFixed(0)}d | net ${pct(r.netOverHold, 2)} ($${r.netUsd.toFixed(2)}) | ≈${pct(r.annualOnCapital, 1)}/yr on capital`;\n  }\n  return `• <b>${escHtml(r.asset)}</b> | exp ${pct(Math.abs(r.expectedDaily))}/day | breakeven ${days(r.breakevenDays)} | net ${pct(r.netOverHold, 2)} ($${r.netUsd.toFixed(2)}) | ≈${pct(r.annualOnCapital, 1)}/yr | ${DIR_TEXT[r.direction]}`;\n}\nfunction buildReport(snapshot, userCfg, nowMs, workflowName) {\n  const { cfg, results, health } = analyzeSnapshot(snapshot, userCfg, nowMs);\n  const ts = new Date(nowMs).toISOString();\n  const freshN = health.filter((h) => h.fresh).length;\n  const sz = sizing(cfg);\n  const titles = { fundingCarry: 'Funding carry (spot + perp)', perpPerpSpread: 'Perp-perp spread (experimental)', datedBasis: 'Dated-futures basis (experimental)' };\n  const lines = [\n    '<b>DSFAB — Insight</b>',\n    `Workflow: ${escHtml(workflowName || 'DSFAB')}`,\n    `Time: ${ts}`,\n    `Capital $${cfg.capitalUSD} | perp margin ${(cfg.perpMarginFraction * 100).toFixed(0)}% → notional $${sz.notional.toFixed(0)} per leg (spot+perp) | hold ${cfg.holdDays}d | fresh ${freshN}/${health.length}`,\n    ''\n  ];\n  for (const strat of Object.keys(titles)) {\n    if (!cfg.strategies[strat]) continue;\n    lines.push(`🔎 <b>${titles[strat]}</b>`);\n    for (const sc of cfg.scenarios) {\n      const rs = results.filter((r) => r.strategy === strat && r.scenario === sc.name);\n      const good = rs.filter((r) => r.pass).sort((a, b) => b.netUsd - a.netUsd);\n      const cm = costModel(sc);\n      const rt = strat === 'fundingCarry' ? cm.carryRoundTrip : strat === 'perpPerpSpread' ? cm.perpPerpRoundTrip : cm.basisRoundTrip;\n      lines.push(`<u>${escHtml(sc.name)}</u> (round-trip cost ${pct(rt, 2)}): ${good.length ? '' : 'none pass'}`);\n      for (const r of good.slice(0, 5)) lines.push(lineFor(r));\n    }\n    const alertSc = cfg.alertScenario;\n    const miss = results.filter((r) => r.strategy === strat && r.scenario === alertSc && !r.pass)\n      .sort((a, b) => b.netUsd - a.netUsd).slice(0, 4);\n    if (miss.length) {\n      lines.push(`❌ Closest misses (${escHtml(alertSc)}):`);\n      for (const r of miss) lines.push(`• ${escHtml(r.symbol || r.asset)} | net ${pct(r.netOverHold, 2)} | ${escHtml(r.reasons.join(', '))}`);\n    }\n    lines.push('');\n  }\n\n  // Health\n  const ages = health.filter((h) => h.st).map((h) => h.st.ageMin).sort((a, b) => a - b);\n  const cad = median(health.filter((h) => h.st).map((h) => h.st.cadenceMin));\n  const errs = health.filter((h) => h.errors.length).map((h) => `${h.asset}(${h.errors.join(';')})`);\n  const healthLines = [\n    '<b>DSFAB — Data Health</b>',\n    `Assets: ${health.length} | price ok: ${health.filter((h) => h.price > 0).length} | funding ok: ${health.filter((h) => h.st).length} | fresh: ${freshN}`,\n    `Funding cadence (median): ${cad ? cad + 'm' : 'n/a'} | last print age min/med/max: ${ages.length ? ages[0].toFixed(0) + '/' + median(ages).toFixed(0) + '/' + ages[ages.length - 1].toFixed(0) + 'm' : 'n/a'}`,\n    `Hyperliquid assets parsed: ${snapshot.hl ? Object.keys(snapshot.hl).length : 0} | Kraken dated contracts parsed: ${Array.isArray(snapshot.dated) ? snapshot.dated.length : 0}`\n  ];\n  if (errs.length) healthLines.push('Errors: ' + escHtml(errs.join(', ')));\n  const pad = (s, n) => { s = String(s); return s.length < n ? s + ' '.repeat(n - s.length) : s.slice(0, n); };\n  const tbl = [pad('ASSET', 6) + pad('PRICE', 12) + pad('NOW/d', 9) + pad('24h/d', 9) + pad('7d/d', 9) + pad('SIGN7d', 7) + 'AGEm'];\n  for (const h of health) {\n    const s = h.st;\n    tbl.push(pad(h.asset, 6) + pad(h.price > 0 ? '$' + h.price.toFixed(4) : 'n/a', 12) +\n      pad(s ? pct(s.dailyNow) : 'n/a', 9) + pad(s ? pct(s.daily24) : 'n/a', 9) + pad(s ? pct(s.daily7d) : 'n/a', 9) +\n      pad(s ? (s.sameSignFrac7d * 100).toFixed(0) + '%' : 'n/a', 7) + (s ? s.ageMin.toFixed(0) : 'n/a'));\n  }\n  const healthPrices = '<b>DSFAB — Funding table (per day)</b>\\n<pre>' + escHtml(tbl.join('\\n')) + '</pre>';\n\n  // Alert: judged under alertScenario only\n  const cand = results.filter((r) => r.pass && r.scenario === cfg.alertScenario && (cfg.alertOnExperimental || !r.experimental))\n    .sort((a, b) => b.netUsd - a.netUsd);\n  let alert = null;\n  if (cand.length) {\n    const b = cand[0];\n    alert = [\n      `✅ <b>DSFAB PICK</b> (${escHtml(cfg.alertScenario)} costs)`,\n      `${escHtml(b.symbol || b.asset)} — ${DIR_TEXT[b.direction]}`,\n      b.strategy === 'datedBasis'\n        ? `basis ${pct(b.basis, 2)} over ${b.daysToExpiry.toFixed(0)}d`\n        : `expected ${pct(Math.abs(b.expectedDaily))}/day | breakeven ${days(b.breakevenDays)}`,\n      `net over ${b.strategy === 'datedBasis' ? 'expiry' : cfg.holdDays + 'd'}: $${b.netUsd.toFixed(2)} on $${b.notional.toFixed(0)} notional`,\n      b.validUntilMs ? `Funding print valid until ${new Date(b.validUntilMs).toISOString()} (≈ ${fmtRemain(b.remainMin)})` : ''\n    ].filter(Boolean).join('\\n');\n  }\n\n  const rows = results.map((r) => ({\n    timestamp: ts, strategy: r.strategy, scenario: r.scenario, asset: r.asset, symbol: r.symbol || '',\n    spotPrice: r.spotPrice, direction: r.direction, executable: !!r.executable, pass: !!r.pass,\n    reasons: r.reasons.join('; '),\n    expectedDailyPct: +(r.expectedDaily * 100).toFixed(6),\n    daily24Pct: r.daily24 === undefined || r.daily24 === null ? '' : +(r.daily24 * 100).toFixed(6),\n    daily7dPct: r.daily7d === undefined || r.daily7d === null ? '' : +(r.daily7d * 100).toFixed(6),\n    sameSignFrac7d: r.sameSignFrac7d === undefined ? '' : +r.sameSignFrac7d.toFixed(3),\n    roundTripCostPct: +(r.roundTripCost * 100).toFixed(4),\n    breakevenDays: Number.isFinite(r.breakevenDays) ? +r.breakevenDays.toFixed(2) : '',\n    netOverHoldPct: +(r.netOverHold * 100).toFixed(4),\n    netUsd: +r.netUsd.toFixed(4),\n    annualOnCapitalPct: Number.isFinite(r.annualOnCapital) ? +(r.annualOnCapital * 100).toFixed(3) : '',\n    notional: +r.notional.toFixed(2),\n    ageMin: r.ageMin === undefined ? '' : +r.ageMin.toFixed(1),\n    fresh: r.fresh === undefined ? '' : !!r.fresh,\n    validUntil: r.validUntilMs ? new Date(r.validUntilMs).toISOString() : ''\n  }));\n\n  return {\n    message: truncateHtml(lines.join('\\n')),\n    health: truncateHtml(healthLines.join('\\n')),\n    healthPrices: truncateHtml(healthPrices),\n    alert, rows, results\n  };\n}\n\nconst DSFAB = {\n  num, toMs, mean, median, defaultConfig, mergeConfig, parseKrakenFunding, fundingStats, costModel,\n  sizing, evaluate, analyzeCarry, parseHyperliquid, analyzePerpPerp, parseKrakenDated, analyzeBasis,\n  analyzeSnapshot, buildReport, truncateHtml\n};\n\nconst list = $('Assets Config').all().map((i) => i.json);\nconst cbAll = $('CB — Spot Price').all();\nconst krAll = $('KR — Funding History').all();\nlet userCfg = {};\ntry { userCfg = $('Scenario Configs').first().json || {}; } catch (_) {}\nconst C = mergeConfig(userCfg);\nconst KEEP_POINTS = 800; // ~33 days of hourly prints; keeps execution data small\nconst bodyOf = (it) => {\n  const j = it && it.json !== undefined ? it.json : it;\n  return j && j.body !== undefined && j.statusCode !== undefined ? j.body : j;\n};\n\nconst assets = list.map((meta, i) => {\n  const errors = [];\n  const cb = bodyOf(cbAll[i]) || {};\n  let price = null;\n  for (const k of ['price', 'last', 'ask', 'bid']) { price = num(cb[k]); if (price !== null) break; }\n  if (price === null) errors.push(cb.error || cb.message ? 'cb_error' : 'cb_no_price');\n  const kr = parseKrakenFunding(bodyOf(krAll[i]), C.sanity);\n  if (!kr.ok) errors.push(kr.reason);\n  kr.series = kr.series.slice(-KEEP_POINTS);\n  return { asset: meta.asset, hlName: meta.hl || meta.asset, price: price === null ? 0 : price, kr, errors };\n});\n\n// Hyperliquid answers with a top-level array [meta, assetCtxs]; n8n may split it into two items.\nlet hlByName = {};\ntry {\n  const items = $('HL — Funding Snapshot').all().map(bodyOf);\n  let body = items;\n  if (items.length === 1 && Array.isArray(items[0])) body = items[0];\n  if (body.length >= 2 && body[1] && !Array.isArray(body[1])) body = [body[0], Object.values(body[1])];\n  hlByName = parseHyperliquid(body, C.sanity);\n} catch (_) {}\nconst hl = {};\nfor (const a of assets) if (hlByName[String(a.hlName).toUpperCase()]) hl[a.asset] = hlByName[String(a.hlName).toUpperCase()];\n\nlet dated = [];\ntry {\n  const known = new Set(assets.map((a) => a.asset));\n  dated = parseKrakenDated(bodyOf($('KR — Tickers').first())).filter((c) => known.has(c.asset));\n} catch (_) {}\n\nreturn [{ json: { timestamp: new Date().toISOString(), assets, hl, dated } }];\n"
+      },
+      "id": "943bc4fd-70f4-43cf-a784-c62776e1b2dc",
+      "name": "Assemble Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "/* Analyze the snapshot: funding carry, perp-perp spread, dated basis; build reports, alert and log rows. */\n/* DSFAB core — pure analysis logic (no network, no n8n globals).\n * This file is the single source of truth. scripts/build-workflow.js inlines it\n * into the n8n Code nodes, and the tests / backtest import it directly.\n *\n * Units used everywhere below:\n *   rate  = fraction of notional (0.0001 = 0.01%)\n *   *Daily = fraction of notional per day\n */\n\n// ---------- small helpers ----------\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  const n = +v;\n  return Number.isFinite(n) ? n : null;\n}\nfunction toMs(t) {\n  if (t === null || t === undefined || t === '') return null;\n  const n = +t;\n  if (Number.isFinite(n)) return n < 1e12 ? n * 1000 : n;\n  const d = Date.parse(t);\n  return Number.isFinite(d) ? d : null;\n}\nfunction mean(a) {\n  return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;\n}\nfunction median(a) {\n  if (!a.length) return null;\n  const s = a.slice().sort((x, y) => x - y);\n  const m = Math.floor(s.length / 2);\n  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;\n}\nfunction sign(x) {\n  return x > 0 ? 1 : x < 0 ? -1 : 0;\n}\nfunction escHtml(s) {\n  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\n\n// ---------- configuration ----------\nfunction defaultConfig() {\n  return {\n    capitalUSD: 500,\n    // Fraction of the perp notional kept as margin on the futures venue.\n    // 0.5 = 2x on the perp leg. The rest of the capital buys the spot leg.\n    perpMarginFraction: 0.5,\n    holdDays: 30, // planning horizon used for \"net over hold\"\n    // Cost scenarios. Fees are PER LEG, as a fraction of notional.\n    // These are examples only: set them to YOUR fee tier on each venue.\n    scenarios: [\n      { name: 'Maker', spotFee: 0.004, spotSlippage: 0.0002, perpFee: 0.0002, perpSlippage: 0.0002, perp2Fee: 0.00015, perp2Slippage: 0.0002 },\n      { name: 'Base', spotFee: 0.006, spotSlippage: 0.0005, perpFee: 0.0005, perpSlippage: 0.0005, perp2Fee: 0.00045, perp2Slippage: 0.0005 },\n      { name: 'Stress', spotFee: 0.006, spotSlippage: 0.0015, perpFee: 0.0005, perpSlippage: 0.0015, perp2Fee: 0.00045, perp2Slippage: 0.0015 }\n    ],\n    alertScenario: 'Base', // alerts are judged under this scenario, never the cheapest one\n    alertOnExperimental: false,\n    strategies: { fundingCarry: true, perpPerpSpread: true, datedBasis: true },\n    // Spot shorting (needed when funding is negative) is not available on\n    // Coinbase spot. Leave false unless you have a margin venue for the spot leg.\n    allowSpotShort: false,\n    spotBorrowDaily: 0.0003, // only used when allowSpotShort is true\n    futuresSettleFee: 0, // fee charged at expiry settlement of a dated future\n    freshness: { maxFundingAgeMin: 130, minPriceUSD: 0.2 },\n    policy: {\n      minHistoryPoints: 120, // at least ~5 days of hourly prints before trusting an asset\n      minSameSignFrac: 0.7, // share of the last 7d prints that agree with the 7d mean sign\n      maxBreakevenDays: 20,\n      minNetOverHold: 0.002, // net return on notional over holdDays, after round-trip cost\n      minBasisDays: 3,\n      minBasisAnnualized: 0.03,\n      maxVenuePriceGap: 0.03 // drop cross-venue signals if prices disagree by more than this\n    },\n    sanity: { maxAbsHourlyRate: 0.01, maxAbsBasis: 0.2 }\n  };\n}\nfunction mergeConfig(user) {\n  const d = defaultConfig();\n  if (!user || typeof user !== 'object') return d;\n  const out = Object.assign({}, d, user);\n  for (const k of ['strategies', 'freshness', 'policy', 'sanity']) {\n    out[k] = Object.assign({}, d[k], user[k] || {});\n  }\n  if (!Array.isArray(out.scenarios) || !out.scenarios.length) out.scenarios = d.scenarios;\n  return out;\n}\n\n// ---------- Kraken Futures funding history ----------\n// GET /derivatives/api/v3/historical-funding-rates?symbol=PF_XBTUSD\n// -> { result, serverTime, rates: [{ timestamp, fundingRate, relativeFundingRate }] }\n// `fundingRate` is ABSOLUTE (quote currency per contract); only `relativeFundingRate`\n// is a fraction of notional, and it is per funding period (hourly on Kraken).\nfunction parseKrakenFunding(body, sanity) {\n  const maxAbs = (sanity && sanity.maxAbsHourlyRate) || 0.01;\n  const arr = body && Array.isArray(body.rates) ? body.rates : null;\n  if (!arr) return { ok: false, reason: 'kr_no_rates', series: [], cadenceMin: 60 };\n  const series = [];\n  let dropped = 0;\n  for (const r of arr) {\n    const t = toMs(r && r.timestamp);\n    const rel = num(r && r.relativeFundingRate);\n    if (t === null || rel === null) { dropped++; continue; }\n    if (Math.abs(rel) > maxAbs) { dropped++; continue; }\n    series.push({ t, rel });\n  }\n  if (!series.length) return { ok: false, reason: 'kr_no_relative_rate', series: [], cadenceMin: 60 };\n  series.sort((a, b) => a.t - b.t);\n  const tail = series.slice(-49);\n  const diffs = [];\n  for (let i = 1; i < tail.length; i++) diffs.push((tail[i].t - tail[i - 1].t) / 60000);\n  const med = median(diffs);\n  const cadenceMin = med && med > 0 ? Math.round(med) : 60;\n  return { ok: true, reason: null, series, cadenceMin, dropped };\n}\n\nfunction windowStats(series, fromMs) {\n  const w = [];\n  for (let i = series.length - 1; i >= 0 && series[i].t > fromMs; i--) w.push(series[i].rel);\n  return { n: w.length, mean: mean(w), values: w };\n}\n\nfunction fundingStats(series, cadenceMin, nowMs) {\n  if (!series.length) return null;\n  const perDay = 1440 / cadenceMin;\n  const last = series[series.length - 1];\n  const H = 3600000;\n  const w24 = windowStats(series, last.t - 24 * H);\n  const w7 = windowStats(series, last.t - 168 * H);\n  const w30 = windowStats(series, last.t - 720 * H);\n  const s7 = sign(w7.mean || 0);\n  const agree = w7.values.filter((x) => sign(x) === s7 && s7 !== 0).length;\n  const sameSignFrac7d = w7.n ? agree / w7.n : 0;\n  const daily24 = w24.mean === null ? null : w24.mean * perDay;\n  const daily7d = w7.mean === null ? null : w7.mean * perDay;\n  const daily30d = w30.mean === null ? null : w30.mean * perDay;\n  // Conservative expectation: the weaker of the 24h and 7d means, and zero if they disagree in sign.\n  let expectedDaily = 0;\n  if (daily24 !== null && daily7d !== null && sign(daily24) === sign(daily7d) && sign(daily7d) !== 0) {\n    expectedDaily = sign(daily7d) * Math.min(Math.abs(daily24), Math.abs(daily7d));\n  }\n  const ageMin = Math.max(0, (nowMs - last.t) / 60000);\n  return {\n    cadenceMin, perDay,\n    lastRel: last.rel, lastTs: last.t, ageMin,\n    dailyNow: last.rel * perDay,\n    daily24, daily7d, daily30d,\n    n7d: w7.n, sameSignFrac7d, expectedDaily,\n    validUntilMs: last.t + cadenceMin * 60000,\n    remainMin: Math.max(0, cadenceMin - ageMin)\n  };\n}\n\n// ---------- cost model ----------\n// A delta-neutral position has FOUR fills: open + close on each of two legs.\n// Costs are one-off; funding accrues over time. They must never be netted per day.\nfunction costModel(sc) {\n  const spotLeg = sc.spotFee + sc.spotSlippage;\n  const perpLeg = sc.perpFee + sc.perpSlippage;\n  const perp2Leg = (sc.perp2Fee === undefined ? sc.perpFee : sc.perp2Fee) + (sc.perp2Slippage === undefined ? sc.perpSlippage : sc.perp2Slippage);\n  return {\n    spotLeg, perpLeg, perp2Leg,\n    carryRoundTrip: 2 * spotLeg + 2 * perpLeg,\n    perpPerpRoundTrip: 2 * perpLeg + 2 * perp2Leg,\n    // buy spot, sell future, (future settles at expiry), sell spot\n    basisRoundTrip: 2 * spotLeg + perpLeg\n  };\n}\n// Capital split. Spot + perp: the spot leg is fully funded and the perp leg needs margin m.\n// Perp + perp: both legs need margin m on their own venue.\nfunction sizing(cfg, twoPerps) {\n  const m = cfg.perpMarginFraction;\n  const notional = twoPerps ? cfg.capitalUSD / (2 * m) : cfg.capitalUSD / (1 + m);\n  // Rough distance to margin exhaustion on a perp leg (ignores maintenance margin).\n  return { notional, perpMarginUSD: notional * m, liqBufferPct: m };\n}\nfunction evaluate(dailyNet, cost, cfg, twoPerps) {\n  const H = cfg.holdDays;\n  const breakevenDays = dailyNet > 0 ? cost / dailyNet : Infinity;\n  const netOverHold = dailyNet * H - cost;\n  const sz = sizing(cfg, twoPerps);\n  const netUsd = netOverHold * sz.notional;\n  const annualOnCapital = (netUsd / cfg.capitalUSD) * (365 / H);\n  return { breakevenDays, netOverHold, netUsd, annualOnCapital, notional: sz.notional };\n}\n\n// ---------- strategy 1: funding carry (spot vs perp) ----------\nfunction analyzeCarry(asset, price, st, sc, cfg, fresh) {\n  const cost = costModel(sc).carryRoundTrip;\n  const e = st.expectedDaily;\n  const dir = e > 0 ? 'SHORT_PERP_LONG_SPOT' : e < 0 ? 'LONG_PERP_SHORT_SPOT' : 'NONE';\n  const needsSpotShort = dir === 'LONG_PERP_SHORT_SPOT';\n  const executable = dir === 'SHORT_PERP_LONG_SPOT' || (needsSpotShort && cfg.allowSpotShort);\n  const dailyNet = Math.abs(e) - (needsSpotShort ? cfg.spotBorrowDaily : 0);\n  const ev = evaluate(dailyNet, cost, cfg);\n  const p = cfg.policy;\n  const reasons = [];\n  if (!fresh) reasons.push('stale');\n  if (dir === 'NONE') reasons.push('24h/7d sign disagree');\n  if (!executable && dir !== 'NONE') reasons.push('needs spot short');\n  if (st.n7d < p.minHistoryPoints) reasons.push('short history');\n  if (st.sameSignFrac7d < p.minSameSignFrac) reasons.push('unstable sign');\n  if (!(ev.breakevenDays <= p.maxBreakevenDays)) reasons.push('breakeven too long');\n  if (ev.netOverHold < p.minNetOverHold) reasons.push('net too small');\n  return Object.assign({\n    strategy: 'fundingCarry', scenario: sc.name, asset, spotPrice: price,\n    direction: dir, executable, expectedDaily: e, dailyNow: st.dailyNow,\n    daily24: st.daily24, daily7d: st.daily7d, daily30d: st.daily30d,\n    sameSignFrac7d: st.sameSignFrac7d, roundTripCost: cost,\n    ageMin: st.ageMin, fresh, validUntilMs: st.validUntilMs, remainMin: st.remainMin,\n    pass: reasons.length === 0, reasons\n  }, ev);\n}\n\n// ---------- strategy 2: perp-perp funding spread (Kraken vs Hyperliquid) ----------\n// Needs no spot leg, so it also works when funding is negative.\n// Hyperliquid funding is hourly. EXPERIMENTAL: only a snapshot of the second venue is used.\nfunction parseHyperliquid(body, sanity) {\n  const maxAbs = (sanity && sanity.maxAbsHourlyRate) || 0.01;\n  const out = {};\n  if (!Array.isArray(body) || body.length < 2) return out;\n  const uni = body[0] && Array.isArray(body[0].universe) ? body[0].universe : [];\n  const ctx = Array.isArray(body[1]) ? body[1] : [];\n  for (let i = 0; i < uni.length && i < ctx.length; i++) {\n    const name = uni[i] && uni[i].name;\n    const f = num(ctx[i] && ctx[i].funding);\n    const px = num(ctx[i] && (ctx[i].markPx !== undefined ? ctx[i].markPx : ctx[i].oraclePx));\n    if (!name || f === null || px === null || Math.abs(f) > maxAbs) continue;\n    out[String(name).toUpperCase()] = { hourly: f, price: px };\n  }\n  return out;\n}\nfunction analyzePerpPerp(asset, price, st, hl, sc, cfg, fresh) {\n  const cost = costModel(sc).perpPerpRoundTrip;\n  const krHourly = (st.daily24 === null ? st.dailyNow : st.daily24) / 24;\n  const spreadDaily = (krHourly - hl.hourly) * 24;\n  const dir = spreadDaily > 0 ? 'SHORT_KRAKEN_LONG_HL' : spreadDaily < 0 ? 'LONG_KRAKEN_SHORT_HL' : 'NONE';\n  const ev = evaluate(Math.abs(spreadDaily), cost, cfg, true);\n  const p = cfg.policy;\n  const gap = price > 0 ? Math.abs(hl.price / price - 1) : Infinity;\n  const reasons = [];\n  if (!fresh) reasons.push('stale');\n  if (dir === 'NONE') reasons.push('no spread');\n  if (gap > p.maxVenuePriceGap) reasons.push('venue price gap');\n  if (!(ev.breakevenDays <= p.maxBreakevenDays)) reasons.push('breakeven too long');\n  if (ev.netOverHold < p.minNetOverHold) reasons.push('net too small');\n  return Object.assign({\n    strategy: 'perpPerpSpread', experimental: true, scenario: sc.name, asset, spotPrice: price,\n    direction: dir, executable: true, expectedDaily: spreadDaily,\n    krDaily: krHourly * 24, hlDaily: hl.hourly * 24, venuePriceGap: gap, roundTripCost: cost,\n    ageMin: st.ageMin, fresh, validUntilMs: st.validUntilMs, remainMin: st.remainMin,\n    pass: reasons.length === 0, reasons\n  }, ev);\n}\n\n// ---------- strategy 3: dated-futures basis (cash and carry) ----------\n// Long spot + short a fixed-maturity future. The return is locked at entry\n// (basis converges at expiry), so it does not depend on future funding prints.\n// EXPERIMENTAL: reads Kraken /tickers; symbols like FF_XBTUSD_YYMMDD / FI_XBTUSD_YYMMDD.\nfunction parseKrakenDated(body) {\n  const arr = body && Array.isArray(body.tickers) ? body.tickers : [];\n  const out = [];\n  for (const t of arr) {\n    const m = /^(FF|FI)_([A-Z]+)USD_(\\d{2})(\\d{2})(\\d{2})$/.exec(String((t && t.symbol) || '').toUpperCase());\n    if (!m) continue;\n    const price = num(t.bid) || num(t.markPrice) || num(t.last);\n    if (!price) continue;\n    const expiryMs = Date.UTC(2000 + +m[3], +m[4] - 1, +m[5], 12, 0, 0);\n    out.push({\n      symbol: m[0], asset: m[2] === 'XBT' ? 'BTC' : m[2], inverse: m[1] === 'FI',\n      price, indexPrice: num(t.indexPrice), expiryMs\n    });\n  }\n  return out;\n}\nfunction analyzeBasis(c, spot, sc, cfg, nowMs) {\n  const S = spot > 0 ? spot : c.indexPrice;\n  const cost = costModel(sc).basisRoundTrip + (cfg.futuresSettleFee || 0);\n  const days = (c.expiryMs - nowMs) / 86400000;\n  const basis = S > 0 ? c.price / S - 1 : NaN;\n  const net = basis - cost;\n  const sz = sizing(cfg);\n  const netUsd = net * sz.notional;\n  const annualOnCapital = days > 0 ? (netUsd / cfg.capitalUSD) * (365 / days) : NaN;\n  const p = cfg.policy;\n  const reasons = [];\n  if (!Number.isFinite(basis)) reasons.push('no spot price');\n  if (Math.abs(basis) > cfg.sanity.maxAbsBasis) reasons.push('basis out of range');\n  if (c.inverse) reasons.push('inverse contract');\n  if (!(days >= p.minBasisDays)) reasons.push('too close to expiry');\n  if (!(basis > 0)) reasons.push('needs spot short');\n  if (!(annualOnCapital >= p.minBasisAnnualized)) reasons.push('yield too small');\n  return {\n    strategy: 'datedBasis', experimental: true, scenario: sc.name, asset: c.asset, symbol: c.symbol,\n    spotPrice: S, futurePrice: c.price, direction: 'LONG_SPOT_SHORT_FUTURE', executable: basis > 0,\n    basis, daysToExpiry: days, roundTripCost: cost, netOverHold: net, netUsd, annualOnCapital,\n    notional: sz.notional, breakevenDays: null, expectedDaily: days > 0 ? basis / days : 0,\n    pass: reasons.length === 0, reasons\n  };\n}\n\n// ---------- snapshot -> full analysis ----------\n// snapshot = { timestamp, assets:[{asset, price, kr:{ok,reason,series,cadenceMin}, errors:[]}],\n//              hl:{ASSET:{hourly,price}}, dated:[...] }\nfunction analyzeSnapshot(snapshot, userCfg, nowMs) {\n  const cfg = mergeConfig(userCfg);\n  const results = [];\n  const health = [];\n  for (const a of snapshot.assets) {\n    const st = a.kr && a.kr.ok ? fundingStats(a.kr.series, a.kr.cadenceMin, nowMs) : null;\n    const priceOk = Number.isFinite(a.price) && a.price >= cfg.freshness.minPriceUSD;\n    const window = st ? Math.max(cfg.freshness.maxFundingAgeMin, Math.round(st.cadenceMin * 1.5)) : cfg.freshness.maxFundingAgeMin;\n    const fresh = !!st && priceOk && st.ageMin <= window;\n    health.push({ asset: a.asset, price: a.price, st, fresh, errors: a.errors || [] });\n    if (!st || !priceOk) continue;\n    for (const sc of cfg.scenarios) {\n      if (cfg.strategies.fundingCarry) results.push(analyzeCarry(a.asset, a.price, st, sc, cfg, fresh));\n      const hl = snapshot.hl && snapshot.hl[a.asset];\n      if (cfg.strategies.perpPerpSpread && hl) results.push(analyzePerpPerp(a.asset, a.price, st, hl, sc, cfg, fresh));\n    }\n  }\n  if (cfg.strategies.datedBasis && Array.isArray(snapshot.dated)) {\n    const px = {};\n    for (const a of snapshot.assets) px[a.asset] = a.price;\n    for (const c of snapshot.dated) for (const sc of cfg.scenarios) results.push(analyzeBasis(c, px[c.asset], sc, cfg, nowMs));\n  }\n  return { cfg, results, health };\n}\n\n// ---------- reporting ----------\nconst pct = (v, d) => (Number.isFinite(v) ? (v * 100).toFixed(d === undefined ? 3 : d) + '%' : 'n/a');\nconst days = (v) => (Number.isFinite(v) ? v.toFixed(1) + 'd' : '∞');\nconst DIR_TEXT = {\n  SHORT_PERP_LONG_SPOT: 'Short perp (KR) + Long spot (CB)',\n  LONG_PERP_SHORT_SPOT: 'Long perp (KR) + Short spot',\n  SHORT_KRAKEN_LONG_HL: 'Short perp (KR) + Long perp (HL)',\n  LONG_KRAKEN_SHORT_HL: 'Long perp (KR) + Short perp (HL)',\n  LONG_SPOT_SHORT_FUTURE: 'Long spot (CB) + Short dated future (KR)',\n  NONE: 'No trade'\n};\nfunction fmtRemain(min) {\n  const m = Math.max(0, Math.floor(min || 0));\n  const h = Math.floor(m / 60);\n  return (h > 0 ? h + 'h ' : '') + (m % 60) + 'm';\n}\nfunction truncateHtml(msg, limit) {\n  const max = limit || 3900;\n  if (msg.length <= max) return msg;\n  const lines = msg.split('\\n');\n  const out = [];\n  let len = 0;\n  for (const l of lines) {\n    if (len + l.length + 1 > max - 40) break;\n    out.push(l);\n    len += l.length + 1;\n  }\n  let res = out.join('\\n');\n  const opens = (res.match(/<pre>/g) || []).length;\n  const closes = (res.match(/<\\/pre>/g) || []).length;\n  if (opens > closes) res += '</pre>';\n  return res + '\\n… (truncated)';\n}\nfunction lineFor(r) {\n  if (r.strategy === 'datedBasis') {\n    return `• <b>${escHtml(r.symbol)}</b> | basis ${pct(r.basis, 2)} | ${r.daysToExpiry.toFixed(0)}d | net ${pct(r.netOverHold, 2)} ($${r.netUsd.toFixed(2)}) | ≈${pct(r.annualOnCapital, 1)}/yr on capital`;\n  }\n  return `• <b>${escHtml(r.asset)}</b> | exp ${pct(Math.abs(r.expectedDaily))}/day | breakeven ${days(r.breakevenDays)} | net ${pct(r.netOverHold, 2)} ($${r.netUsd.toFixed(2)}) | ≈${pct(r.annualOnCapital, 1)}/yr | ${DIR_TEXT[r.direction]}`;\n}\nfunction buildReport(snapshot, userCfg, nowMs, workflowName) {\n  const { cfg, results, health } = analyzeSnapshot(snapshot, userCfg, nowMs);\n  const ts = new Date(nowMs).toISOString();\n  const freshN = health.filter((h) => h.fresh).length;\n  const sz = sizing(cfg);\n  const titles = { fundingCarry: 'Funding carry (spot + perp)', perpPerpSpread: 'Perp-perp spread (experimental)', datedBasis: 'Dated-futures basis (experimental)' };\n  const lines = [\n    '<b>DSFAB — Insight</b>',\n    `Workflow: ${escHtml(workflowName || 'DSFAB')}`,\n    `Time: ${ts}`,\n    `Capital $${cfg.capitalUSD} | perp margin ${(cfg.perpMarginFraction * 100).toFixed(0)}% → notional $${sz.notional.toFixed(0)} per leg (spot+perp) | hold ${cfg.holdDays}d | fresh ${freshN}/${health.length}`,\n    ''\n  ];\n  for (const strat of Object.keys(titles)) {\n    if (!cfg.strategies[strat]) continue;\n    lines.push(`🔎 <b>${titles[strat]}</b>`);\n    for (const sc of cfg.scenarios) {\n      const rs = results.filter((r) => r.strategy === strat && r.scenario === sc.name);\n      const good = rs.filter((r) => r.pass).sort((a, b) => b.netUsd - a.netUsd);\n      const cm = costModel(sc);\n      const rt = strat === 'fundingCarry' ? cm.carryRoundTrip : strat === 'perpPerpSpread' ? cm.perpPerpRoundTrip : cm.basisRoundTrip;\n      lines.push(`<u>${escHtml(sc.name)}</u> (round-trip cost ${pct(rt, 2)}): ${good.length ? '' : 'none pass'}`);\n      for (const r of good.slice(0, 5)) lines.push(lineFor(r));\n    }\n    const alertSc = cfg.alertScenario;\n    const miss = results.filter((r) => r.strategy === strat && r.scenario === alertSc && !r.pass)\n      .sort((a, b) => b.netUsd - a.netUsd).slice(0, 4);\n    if (miss.length) {\n      lines.push(`❌ Closest misses (${escHtml(alertSc)}):`);\n      for (const r of miss) lines.push(`• ${escHtml(r.symbol || r.asset)} | net ${pct(r.netOverHold, 2)} | ${escHtml(r.reasons.join(', '))}`);\n    }\n    lines.push('');\n  }\n\n  // Health\n  const ages = health.filter((h) => h.st).map((h) => h.st.ageMin).sort((a, b) => a - b);\n  const cad = median(health.filter((h) => h.st).map((h) => h.st.cadenceMin));\n  const errs = health.filter((h) => h.errors.length).map((h) => `${h.asset}(${h.errors.join(';')})`);\n  const healthLines = [\n    '<b>DSFAB — Data Health</b>',\n    `Assets: ${health.length} | price ok: ${health.filter((h) => h.price > 0).length} | funding ok: ${health.filter((h) => h.st).length} | fresh: ${freshN}`,\n    `Funding cadence (median): ${cad ? cad + 'm' : 'n/a'} | last print age min/med/max: ${ages.length ? ages[0].toFixed(0) + '/' + median(ages).toFixed(0) + '/' + ages[ages.length - 1].toFixed(0) + 'm' : 'n/a'}`,\n    `Hyperliquid assets parsed: ${snapshot.hl ? Object.keys(snapshot.hl).length : 0} | Kraken dated contracts parsed: ${Array.isArray(snapshot.dated) ? snapshot.dated.length : 0}`\n  ];\n  if (errs.length) healthLines.push('Errors: ' + escHtml(errs.join(', ')));\n  const pad = (s, n) => { s = String(s); return s.length < n ? s + ' '.repeat(n - s.length) : s.slice(0, n); };\n  const tbl = [pad('ASSET', 6) + pad('PRICE', 12) + pad('NOW/d', 9) + pad('24h/d', 9) + pad('7d/d', 9) + pad('SIGN7d', 7) + 'AGEm'];\n  for (const h of health) {\n    const s = h.st;\n    tbl.push(pad(h.asset, 6) + pad(h.price > 0 ? '$' + h.price.toFixed(4) : 'n/a', 12) +\n      pad(s ? pct(s.dailyNow) : 'n/a', 9) + pad(s ? pct(s.daily24) : 'n/a', 9) + pad(s ? pct(s.daily7d) : 'n/a', 9) +\n      pad(s ? (s.sameSignFrac7d * 100).toFixed(0) + '%' : 'n/a', 7) + (s ? s.ageMin.toFixed(0) : 'n/a'));\n  }\n  const healthPrices = '<b>DSFAB — Funding table (per day)</b>\\n<pre>' + escHtml(tbl.join('\\n')) + '</pre>';\n\n  // Alert: judged under alertScenario only\n  const cand = results.filter((r) => r.pass && r.scenario === cfg.alertScenario && (cfg.alertOnExperimental || !r.experimental))\n    .sort((a, b) => b.netUsd - a.netUsd);\n  let alert = null;\n  if (cand.length) {\n    const b = cand[0];\n    alert = [\n      `✅ <b>DSFAB PICK</b> (${escHtml(cfg.alertScenario)} costs)`,\n      `${escHtml(b.symbol || b.asset)} — ${DIR_TEXT[b.direction]}`,\n      b.strategy === 'datedBasis'\n        ? `basis ${pct(b.basis, 2)} over ${b.daysToExpiry.toFixed(0)}d`\n        : `expected ${pct(Math.abs(b.expectedDaily))}/day | breakeven ${days(b.breakevenDays)}`,\n      `net over ${b.strategy === 'datedBasis' ? 'expiry' : cfg.holdDays + 'd'}: $${b.netUsd.toFixed(2)} on $${b.notional.toFixed(0)} notional`,\n      b.validUntilMs ? `Funding print valid until ${new Date(b.validUntilMs).toISOString()} (≈ ${fmtRemain(b.remainMin)})` : ''\n    ].filter(Boolean).join('\\n');\n  }\n\n  const rows = results.map((r) => ({\n    timestamp: ts, strategy: r.strategy, scenario: r.scenario, asset: r.asset, symbol: r.symbol || '',\n    spotPrice: r.spotPrice, direction: r.direction, executable: !!r.executable, pass: !!r.pass,\n    reasons: r.reasons.join('; '),\n    expectedDailyPct: +(r.expectedDaily * 100).toFixed(6),\n    daily24Pct: r.daily24 === undefined || r.daily24 === null ? '' : +(r.daily24 * 100).toFixed(6),\n    daily7dPct: r.daily7d === undefined || r.daily7d === null ? '' : +(r.daily7d * 100).toFixed(6),\n    sameSignFrac7d: r.sameSignFrac7d === undefined ? '' : +r.sameSignFrac7d.toFixed(3),\n    roundTripCostPct: +(r.roundTripCost * 100).toFixed(4),\n    breakevenDays: Number.isFinite(r.breakevenDays) ? +r.breakevenDays.toFixed(2) : '',\n    netOverHoldPct: +(r.netOverHold * 100).toFixed(4),\n    netUsd: +r.netUsd.toFixed(4),\n    annualOnCapitalPct: Number.isFinite(r.annualOnCapital) ? +(r.annualOnCapital * 100).toFixed(3) : '',\n    notional: +r.notional.toFixed(2),\n    ageMin: r.ageMin === undefined ? '' : +r.ageMin.toFixed(1),\n    fresh: r.fresh === undefined ? '' : !!r.fresh,\n    validUntil: r.validUntilMs ? new Date(r.validUntilMs).toISOString() : ''\n  }));\n\n  return {\n    message: truncateHtml(lines.join('\\n')),\n    health: truncateHtml(healthLines.join('\\n')),\n    healthPrices: truncateHtml(healthPrices),\n    alert, rows, results\n  };\n}\n\nconst DSFAB = {\n  num, toMs, mean, median, defaultConfig, mergeConfig, parseKrakenFunding, fundingStats, costModel,\n  sizing, evaluate, analyzeCarry, parseHyperliquid, analyzePerpPerp, parseKrakenDated, analyzeBasis,\n  analyzeSnapshot, buildReport, truncateHtml\n};\n\nconst snap = $input.first().json;\nlet userCfg = {};\ntry { userCfg = $('Scenario Configs').first().json || {}; } catch (_) {}\nconst out = buildReport(snap, userCfg, Date.now(), $workflow.name);\nreturn [{ json: { message: out.message, health: out.health, healthPrices: out.healthPrices, alert: out.alert, rows: out.rows } }];\n"
+      },
+      "id": "1569a3fc-3773-4a43-adab-d8b54c559eb3",
+      "name": "Analyze & Advise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "12c69eb9-a14d-459c-a196-2c4b76b5382c",
+      "name": "Telegram — Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        336
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.health }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "87444c87-6d88-4a3f-a134-3d9b2bacc695",
+      "name": "Telegram — Health",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        176
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.healthPrices }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "dc92fc16-e303-434f-a199-faae2b88b8bc",
+      "name": "Telegram — Funding Table",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        16
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "// Emits nothing when there is no alert, so the Telegram node does not run.\nconst a = $input.first().json.alert;\nif (!a) return [];\nreturn [{ json: { message: a } }];"
+      },
+      "id": "c7f0faef-59dc-4e5d-a601-44627c9c5031",
+      "name": "Build Alert (if any)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "0206a30d-e232-4b06-abc9-2b2dc95064d9",
+      "name": "Telegram — Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        656
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "JavaScript",
+        "jsCode": "const rows = $input.first().json.rows;\nreturn (Array.isArray(rows) ? rows : []).map((r) => ({ json: r }));"
+      },
+      "id": "d0e0c56d-b17e-4e70-a580-077e3c443b23",
+      "name": "Rows → Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "DSFAB_Logs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "3f871459-8f99-43b0-a142-cfae3ab73662",
+      "name": "Google Sheets — Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -160,
+        816
+      ]
+    }
+  ],
+  "connections": {
+    "Cron (every 15m)": {
+      "main": [
+        [
+          {
+            "node": "Scenario Configs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Configs": {
+      "main": [
+        [
+          {
+            "node": "Assets Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assets Config": {
+      "main": [
+        [
+          {
+            "node": "CB — Spot Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CB — Spot Price": {
+      "main": [
+        [
+          {
+            "node": "KR — Funding History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KR — Funding History": {
+      "main": [
+        [
+          {
+            "node": "KR — Tickers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KR — Tickers": {
+      "main": [
+        [
+          {
+            "node": "HL — Funding Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HL — Funding Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Assemble Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Analyze & Advise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze & Advise": {
+      "main": [
+        [
+          {
+            "node": "Telegram — Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram — Health",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram — Funding Table",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Alert (if any)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Rows → Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert (if any)": {
+      "main": [
+        [
+          {
+            "node": "Telegram — Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rows → Items": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Append",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

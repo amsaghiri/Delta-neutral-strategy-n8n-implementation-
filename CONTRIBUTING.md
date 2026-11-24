@@ -1,7 +1,8 @@
 # Contributing
 
 1. Fork the repo and create a feature branch.
-2. Keep PRs focused and include a description of the change.
-3. Do not include any secrets in commits.
-4. If you change node names in the n8n workflow, ensure all references remain consistent.
-5. Add/update tests or sample outputs if your change affects behavior.
+2. Change logic in `src/`, never in `workflow/dsfab_process3.json` (it is generated).
+3. Run `npm test`. It rebuilds the workflow and must pass.
+4. Commit the regenerated workflow file together with your `src/` change.
+5. If you rename an n8n node, update every `$('Node name')` reference; a test checks this.
+6. Do not include secrets in commits.
