@@ -20,3 +20,5 @@ __pycache__/
 node_modules/
 # Downloaded funding history
 data/
+# Keep the archived 2025-08 release
+!legacy/*.zip

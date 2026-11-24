@@ -50,6 +50,7 @@ Details, formulas and limits of each one: [docs/STRATEGIES.md](docs/STRATEGIES.m
 │  └─ backtest.js                 # run the backtest on data/
 ├─ test/                          # node:test suite (no dependencies)
 ├─ docs/                          # ARCHITECTURE, STRATEGIES, SAMPLE_OUTPUT
+├─ legacy/                        # zipped 2025-08 release, for reference only
 └─ README, LICENSE, DISCLAIMER, SECURITY, CONTRIBUTING, CHANGELOG
 ```
 

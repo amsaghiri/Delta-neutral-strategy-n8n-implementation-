@@ -29,6 +29,7 @@
 - Negative funding is flagged as `needs spot short` instead of being shown as a trade.
 - Experimental strategies: Kraken–Hyperliquid perp-perp spread, dated-futures basis.
 - `scripts/fetch-history.js`, `scripts/backtest.js`, and a dependency-free test suite.
+- `legacy/dsfab-process3-2025-08.zip`: the previous release, archived as it was.
 
 ## 2025-08-17
 - Initial public release of **DSFAB Process 3** workflow (long report + order detail time).
