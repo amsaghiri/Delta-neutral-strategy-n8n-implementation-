@@ -1,0 +1,14 @@
+{
+  "name": "dsfab-process3",
+  "version": "2.0.0",
+  "description": "Delta-neutral radar for n8n: funding carry, perp-perp spread and dated basis. Read-only analytics.",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node scripts/build-workflow.js",
+    "test": "node scripts/build-workflow.js && node --test test/*.test.js",
+    "fetch-history": "node scripts/fetch-history.js",
+    "backtest": "node scripts/backtest.js"
+  }
+}
